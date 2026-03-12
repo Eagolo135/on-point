@@ -14,22 +14,15 @@ const STARTER: ChatMessage[] = [
   {
     id: "m-1",
     role: "assistant",
-    text: "I can update your tasks and calendar directly. Try: add task physics review for 40 min",
+    text: "I’m point-chat.ai. I can chat naturally and actively manage your tasks and schedule. Try: add task physics review for 40 min",
   },
 ];
 
 export function AssistantChatClient() {
-  const { runAssistantCommand } = usePlanner();
+  const { runPointChat, pendingProposal, confirmPendingProposal, cancelPendingProposal } = usePlanner();
   const [messages, setMessages] = useState<ChatMessage[]>(STARTER);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-
-  function isGithubPagesHost() {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return window.location.hostname.endsWith("github.io");
-  }
 
   async function submit() {
     const text = input.trim();
@@ -47,61 +40,46 @@ export function AssistantChatClient() {
     setMessages(nextMessages);
     setInput("");
 
-    const plannerResponse = runAssistantCommand(text);
-
-    if (isGithubPagesHost()) {
-      const fallbackMessage: ChatMessage = {
-        id: `a-${Date.now()}`,
-        role: "assistant",
-        text: plannerResponse,
-      };
-      setMessages((prev) => [...prev, fallbackMessage]);
-      return;
-    }
-
     setIsSending(true);
+    const response = runPointChat(text);
+    const assistantMessage: ChatMessage = {
+      id: `a-${Date.now()}`,
+      role: "assistant",
+      text: response.message,
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsSending(false);
+  }
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: nextMessages,
-          plannerContext: plannerResponse,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Chat API request failed.");
-      }
-
-      const data = (await response.json()) as { reply?: string };
-      const assistantMessage: ChatMessage = {
+  function confirmProposal() {
+    const message = confirmPendingProposal();
+    setMessages((prev) => [
+      ...prev,
+      {
         id: `a-${Date.now()}`,
         role: "assistant",
-        text: data.reply?.trim() || plannerResponse,
-      };
+        text: message,
+      },
+    ]);
+  }
 
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch {
-      const fallbackMessage: ChatMessage = {
+  function rejectProposal() {
+    cancelPendingProposal();
+    setMessages((prev) => [
+      ...prev,
+      {
         id: `a-${Date.now()}`,
         role: "assistant",
-        text: plannerResponse,
-      };
-      setMessages((prev) => [...prev, fallbackMessage]);
-    } finally {
-      setIsSending(false);
-    }
+        text: "All good — I canceled that change. We can try a different plan.",
+      },
+    ]);
   }
 
   return (
     <div className="flex min-h-[80vh] flex-col rounded-xl border border-surface-border bg-surface/80 shadow-[0_0_0_1px_rgba(200,162,77,0.08),0_20px_60px_rgba(0,0,0,0.45)]">
       <div className="border-b border-surface-border px-4 py-3">
-        <p className="text-xs uppercase tracking-[0.2em] text-gold">On Point AI</p>
-        <h1 className="mt-1 text-xl font-semibold md:text-2xl">Chat</h1>
+        <p className="text-xs uppercase tracking-[0.2em] text-gold">point-chat.ai</p>
+        <h1 className="mt-1 text-xl font-semibold md:text-2xl">Companion Planner</h1>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -128,6 +106,34 @@ export function AssistantChatClient() {
       </div>
 
       <div className="border-t border-surface-border p-3">
+        {pendingProposal ? (
+          <div className="mb-3 rounded-md border border-gold/40 bg-gold/10 p-3 text-xs">
+            <p className="font-medium text-gold-strong">Confirmation needed: {pendingProposal.title}</p>
+            <p className="mt-1 text-zinc-200">{pendingProposal.summary}</p>
+            {pendingProposal.warnings.length ? (
+              <ul className="mt-1 list-disc pl-4 text-zinc-300">
+                {pendingProposal.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={confirmProposal}
+                className="rounded-md border border-gold bg-gold/20 px-2.5 py-1 text-[11px] text-gold-strong"
+              >
+                Confirm changes
+              </button>
+              <button
+                onClick={rejectProposal}
+                className="rounded-md border border-surface-border px-2.5 py-1 text-[11px] text-zinc-200"
+              >
+                Keep current schedule
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex gap-2">
           <input
             value={input}
@@ -135,7 +141,7 @@ export function AssistantChatClient() {
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                submit();
+                void submit();
               }
             }}
             placeholder="Tell me what to schedule or update..."

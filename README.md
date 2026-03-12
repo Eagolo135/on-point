@@ -82,5 +82,6 @@ OPENAI_MODEL=gpt-4o-mini
 
 ## Notes
 
-- Assistant planning commands still run locally; chat responses can optionally use OpenAI via `/api/chat`
+- point-chat.ai analyzes the full day before scheduling changes, detects conflicts, and asks for confirmation before major edits
+- point-chat.ai can add, move, update, delete, and optimize tasks while warning about overload and sleep tradeoffs
 - No backend or DB yet
