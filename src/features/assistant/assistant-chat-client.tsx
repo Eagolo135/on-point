@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { usePlanner } from "@/features/planner/planner-context";
 import { looksLikeResearchPrompt, runAgenticResearch, type ResearchReport } from "@/features/assistant/research-tool";
+import { PointChatAvatar } from "@/features/assistant/point-chat-avatar";
 
 type ChatMessage = {
   id: string;
@@ -19,23 +20,36 @@ const STARTER: ChatMessage[] = [
   },
 ];
 
+const QUICK_SUGGESTIONS = [
+  "Suggest my best study blocks for today",
+  "Optimize my schedule to reduce stress",
+  "Find open slots for a 90 minute focus session",
+  "Research best way to study Computer Systems effectively",
+];
+
 export function AssistantChatClient() {
   const { runPointChat, pendingProposal, confirmPendingProposal, cancelPendingProposal } = usePlanner();
+  const idCounterRef = useRef(2);
   const [messages, setMessages] = useState<ChatMessage[]>(STARTER);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [researchReport, setResearchReport] = useState<ResearchReport | null>(null);
 
-  async function submit() {
-    const text = input.trim();
-    if (!text || isSending) {
+  function nextMessageId(role: "u" | "a") {
+    idCounterRef.current += 1;
+    return `${role}-${idCounterRef.current}`;
+  }
+
+  async function sendPrompt(text: string) {
+    const cleaned = text.trim();
+    if (!cleaned || isSending) {
       return;
     }
 
     const userMessage: ChatMessage = {
-      id: `u-${Date.now()}`,
+      id: nextMessageId("u"),
       role: "user",
-      text,
+      text: cleaned,
     };
 
     const nextMessages = [...messages, userMessage];
@@ -43,11 +57,11 @@ export function AssistantChatClient() {
     setInput("");
 
     setIsSending(true);
-    if (looksLikeResearchPrompt(text)) {
-      const report = await runAgenticResearch(text);
+    if (looksLikeResearchPrompt(cleaned)) {
+      const report = await runAgenticResearch(cleaned);
       setResearchReport(report);
       const assistantMessage: ChatMessage = {
-        id: `a-${Date.now()}`,
+        id: nextMessageId("a"),
         role: "assistant",
         text: `${report.summary} I added the key findings, sources, and a relevance graph below.`,
       };
@@ -56,9 +70,9 @@ export function AssistantChatClient() {
       return;
     }
 
-    const response = runPointChat(text);
+    const response = runPointChat(cleaned);
     const assistantMessage: ChatMessage = {
-      id: `a-${Date.now()}`,
+      id: nextMessageId("a"),
       role: "assistant",
       text: response.message,
     };
@@ -67,12 +81,16 @@ export function AssistantChatClient() {
     setIsSending(false);
   }
 
+  async function submit() {
+    await sendPrompt(input);
+  }
+
   function confirmProposal() {
     const message = confirmPendingProposal();
     setMessages((prev) => [
       ...prev,
       {
-        id: `a-${Date.now()}`,
+        id: nextMessageId("a"),
         role: "assistant",
         text: message,
       },
@@ -84,7 +102,7 @@ export function AssistantChatClient() {
     setMessages((prev) => [
       ...prev,
       {
-        id: `a-${Date.now()}`,
+        id: nextMessageId("a"),
         role: "assistant",
         text: "All good — I canceled that change. We can try a different plan.",
       },
@@ -94,8 +112,13 @@ export function AssistantChatClient() {
   return (
     <div className="flex min-h-[80vh] flex-col rounded-xl border border-surface-border bg-surface/80 shadow-[0_0_0_1px_rgba(200,162,77,0.08),0_20px_60px_rgba(0,0,0,0.45)]">
       <div className="border-b border-surface-border px-4 py-3">
-        <p className="text-xs uppercase tracking-[0.2em] text-gold">point-chat.ai</p>
-        <h1 className="mt-1 text-xl font-semibold md:text-2xl">Companion Planner</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-gold">point-chat.ai</p>
+            <h1 className="mt-1 text-xl font-semibold md:text-2xl">Companion Planner</h1>
+          </div>
+          <PointChatAvatar size={56} />
+        </div>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -173,6 +196,22 @@ export function AssistantChatClient() {
       </div>
 
       <div className="border-t border-surface-border p-3">
+        <div className="mb-3">
+          <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400">Suggestions</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => void sendPrompt(suggestion)}
+                className="rounded-full border border-surface-border bg-surface/70 px-3 py-1.5 text-[11px] text-zinc-200 hover:border-gold/50"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {pendingProposal ? (
           <div className="mb-3 rounded-md border border-gold/40 bg-gold/10 p-3 text-xs">
             <p className="font-medium text-gold-strong">Confirmation needed: {pendingProposal.title}</p>
