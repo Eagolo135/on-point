@@ -1,11 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { useAuth } from "@/features/auth/auth-context";
-import { useGoogleCalendar } from "@/features/google/google-calendar-context";
 import { usePlanner } from "@/features/planner/planner-context";
 
 function dayKey(date: Date): string {
@@ -31,19 +29,9 @@ function buildMonthGrid(now: Date): Date[] {
 
 export default function CalendarPage() {
   const { events } = usePlanner();
-  const { isCalendarScopeGranted, refreshGoogleAccessToken } = useAuth();
-  const {
-    events: googleEvents,
-    error: googleError,
-    isLoading: googleLoading,
-    refreshEvents,
-    createEvent,
-    updateEvent,
-  } = useGoogleCalendar();
 
   const now = new Date();
   const grid = buildMonthGrid(now);
-  const [quickTitle, setQuickTitle] = useState("Focus block");
 
   const mergedEvents = useMemo(() => {
     const local = events.map((event) => ({
@@ -54,19 +42,10 @@ export default function CalendarPage() {
       source: "local" as const,
     }));
 
-    const remote = googleEvents.map((event) => ({
-      id: `google-${event.id}`,
-      title: event.summary,
-      startIso: event.start,
-      endIso: event.end,
-      source: "google" as const,
-      googleId: event.id,
-    }));
-
-    return [...local, ...remote].sort(
+    return local.sort(
       (a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime(),
     );
-  }, [events, googleEvents]);
+  }, [events]);
 
   const grouped = new Map<string, typeof mergedEvents>();
   for (const event of mergedEvents) {
@@ -75,85 +54,12 @@ export default function CalendarPage() {
     grouped.set(key, [...prev, event]);
   }
 
-  async function createQuickEvent() {
-    const start = new Date();
-    start.setHours(start.getHours() + 1, 0, 0, 0);
-    const end = new Date(start);
-    end.setMinutes(end.getMinutes() + 60);
-
-    await createEvent({
-      summary: quickTitle,
-      description: "Created from On Point",
-      startIso: start.toISOString(),
-      endIso: end.toISOString(),
-    });
-  }
-
-  async function renameFirstGoogleEvent() {
-    if (!googleEvents.length) {
-      return;
-    }
-
-    const first = googleEvents[0];
-    await updateEvent(first.id, {
-      summary: `${first.summary} (Updated by On Point)`,
-    });
-  }
-
   return (
     <div className="space-y-4 md:space-y-5">
       <PageHeader
         title="Calendar"
-        subtitle="Visual monthly calendar with local planner items and Google Calendar events."
+        subtitle="Visual monthly calendar with local planner items."
       />
-
-      <SectionCard title="Google Calendar access" description="Calendar API uses the Google access token from Google sign-in.">
-        <div className="space-y-3 text-sm">
-          <p className="text-zinc-200">
-            Scope granted: {isCalendarScopeGranted ? "Yes" : "No"}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => void refreshGoogleAccessToken()}
-              className="rounded-md border border-gold bg-gold/15 px-3 py-2 text-xs text-gold-strong"
-            >
-              Reconnect Google + Calendar scope
-            </button>
-            <button
-              onClick={() => void refreshEvents()}
-              className="rounded-md border border-surface-border px-3 py-2 text-xs"
-            >
-              Refresh Google events
-            </button>
-          </div>
-          {googleLoading ? <p className="text-zinc-300">Loading Google events...</p> : null}
-          {googleError ? <p className="text-red-300">{googleError}</p> : null}
-
-          <div className="mt-2 rounded-md border border-surface-border bg-surface/55 p-3">
-            <p className="text-xs text-zinc-300">Create or update Google events from On Point:</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input
-                value={quickTitle}
-                onChange={(event) => setQuickTitle(event.target.value)}
-                className="rounded-md border border-surface-border bg-background px-2 py-1.5 text-xs"
-                placeholder="Event title"
-              />
-              <button
-                onClick={() => void createQuickEvent()}
-                className="rounded-md border border-gold bg-gold/15 px-3 py-1.5 text-xs text-gold-strong"
-              >
-                Create Google event
-              </button>
-              <button
-                onClick={() => void renameFirstGoogleEvent()}
-                className="rounded-md border border-surface-border px-3 py-1.5 text-xs"
-              >
-                Update first Google event
-              </button>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
 
       <SectionCard title="Month view" description="Tap any date's tasks from the Tasks or AI chat, and they appear here.">
         <div className="grid grid-cols-7 gap-2 text-xs text-zinc-300">

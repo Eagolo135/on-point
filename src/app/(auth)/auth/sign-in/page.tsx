@@ -8,11 +8,12 @@ import { useAuth } from "@/features/auth/auth-context";
 
 export default function SignInPage() {
   const router = useRouter();
-  const { user, isReady, isGoogleReady, signInWithGoogle, isCalendarScopeGranted } = useAuth();
+  const { user, isReady, signIn } = useAuth();
 
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const isMissingGoogleClientId = !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
     if (isReady && user) {
@@ -21,10 +22,15 @@ export default function SignInPage() {
   }, [isReady, user, router]);
 
   async function submit() {
+    if (!email.trim()) {
+      setStatus("Email is required.");
+      return;
+    }
+
     setPending(true);
     setStatus(null);
     try {
-      await signInWithGoogle();
+      signIn({ email, displayName });
       router.push("/assistant");
     } catch (caughtError) {
       setStatus(caughtError instanceof Error ? caughtError.message : "Auth failed.");
@@ -39,11 +45,24 @@ export default function SignInPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-gold">On Point</p>
         <h1 className="mt-2 text-3xl font-semibold">Sign in</h1>
         <p className="mt-2 text-sm text-zinc-300">
-          Continue securely with your Google account.
+          Continue with your On Point account.
         </p>
 
-        <div className="mt-4 rounded-md border border-gold/40 bg-gold/10 p-3 text-xs text-zinc-200">
-          On Point requests Google Calendar permission so the app can read your events and create/update calendar items.
+        <div className="mt-4 space-y-2">
+          <input
+            type="text"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            placeholder="Display name (optional)"
+            className="w-full rounded-lg border border-surface-border bg-surface/60 px-3 py-2 text-sm"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email"
+            className="w-full rounded-lg border border-surface-border bg-surface/60 px-3 py-2 text-sm"
+          />
         </div>
 
         <button
@@ -52,18 +71,10 @@ export default function SignInPage() {
           onClick={() => void submit()}
           className="mt-6 w-full rounded-lg border border-gold bg-gold/15 px-4 py-2.5 font-medium text-gold-strong disabled:opacity-60"
         >
-          {pending ? "Please wait..." : "Continue with Google"}
+          {pending ? "Please wait..." : "Continue"}
         </button>
 
         {status ? <p className="mt-2 text-xs text-red-300">{status}</p> : null}
-        {isCalendarScopeGranted ? <p className="mt-2 text-xs text-emerald-300">Calendar scope granted.</p> : null}
-
-        {isMissingGoogleClientId ? (
-          <p className="mt-3 text-xs text-amber-300">Missing env: NEXT_PUBLIC_GOOGLE_CLIENT_ID</p>
-        ) : null}
-        {!isGoogleReady && !isMissingGoogleClientId ? (
-          <p className="mt-3 text-xs text-zinc-400">Loading Google identity services…</p>
-        ) : null}
 
         <div className="mt-5 flex items-center justify-end text-sm">
           <Link href="/assistant" className="text-gold-strong underline-offset-4 hover:underline">
