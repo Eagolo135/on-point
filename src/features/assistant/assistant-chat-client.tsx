@@ -24,6 +24,13 @@ export function AssistantChatClient() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
 
+  function isGithubPagesHost() {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.location.hostname.endsWith("github.io");
+  }
+
   async function submit() {
     const text = input.trim();
     if (!text || isSending) {
@@ -41,6 +48,17 @@ export function AssistantChatClient() {
     setInput("");
 
     const plannerResponse = runAssistantCommand(text);
+
+    if (isGithubPagesHost()) {
+      const fallbackMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        text: plannerResponse,
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+      return;
+    }
+
     setIsSending(true);
 
     try {
