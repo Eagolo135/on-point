@@ -22,10 +22,11 @@ export function AssistantChatClient() {
   const { runAssistantCommand } = usePlanner();
   const [messages, setMessages] = useState<ChatMessage[]>(STARTER);
   const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  function submit() {
+  async function submit() {
     const text = input.trim();
-    if (!text) {
+    if (!text || isSending) {
       return;
     }
 
@@ -35,15 +36,47 @@ export function AssistantChatClient() {
       text,
     };
 
-    const response = runAssistantCommand(text);
-    const assistantMessage: ChatMessage = {
-      id: `a-${Date.now()}`,
-      role: "assistant",
-      text: response,
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput("");
+
+    const plannerResponse = runAssistantCommand(text);
+    setIsSending(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: nextMessages,
+          plannerContext: plannerResponse,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Chat API request failed.");
+      }
+
+      const data = (await response.json()) as { reply?: string };
+      const assistantMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        text: data.reply?.trim() || plannerResponse,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch {
+      const fallbackMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        text: plannerResponse,
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -67,6 +100,13 @@ export function AssistantChatClient() {
             </div>
           </div>
         ))}
+        {isSending ? (
+          <div className="flex justify-start">
+            <div className="max-w-[88%] rounded-2xl border border-surface-border bg-background px-4 py-3 text-sm text-zinc-400 md:max-w-[70%]">
+              Thinking...
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="border-t border-surface-border p-3">
@@ -83,8 +123,12 @@ export function AssistantChatClient() {
             placeholder="Tell me what to schedule or update..."
             className="flex-1 rounded-lg border border-surface-border bg-background px-3 py-2 text-sm"
           />
-          <button onClick={submit} className="rounded-lg border border-gold bg-gold/15 px-4 py-2 text-sm text-gold-strong">
-            Send
+          <button
+            onClick={() => void submit()}
+            disabled={isSending}
+            className="rounded-lg border border-gold bg-gold/15 px-4 py-2 text-sm text-gold-strong disabled:opacity-60"
+          >
+            {isSending ? "Sending..." : "Send"}
           </button>
         </div>
       </div>

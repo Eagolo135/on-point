@@ -73,7 +73,14 @@ npm run dev
 
 Open http://localhost:3000.
 
+For ChatGPT-powered assistant responses, add this to `.env.local`:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+```
+
 ## Notes
 
-- Assistant command parsing is local (no external LLM backend yet)
+- Assistant planning commands still run locally; chat responses can optionally use OpenAI via `/api/chat`
 - No backend or DB yet

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -29,6 +29,7 @@ function buildMonthGrid(now: Date): Date[] {
 
 export default function CalendarPage() {
   const { events } = usePlanner();
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
 
   const now = new Date();
   const grid = buildMonthGrid(now);
@@ -61,48 +62,74 @@ export default function CalendarPage() {
         subtitle="Visual monthly calendar with local planner items."
       />
 
-      <SectionCard title="Month view" description="Tap any date's tasks from the Tasks or AI chat, and they appear here.">
-        <div className="grid grid-cols-7 gap-2 text-xs text-zinc-300">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((weekday) => (
-            <p key={weekday} className="px-1 py-1.5 text-center font-medium uppercase tracking-wide text-gold">
-              {weekday}
-            </p>
-          ))}
-
-          {grid.map((date) => {
-            const key = dayKey(date);
-            const dayEvents = grouped.get(key) ?? [];
-            const inMonth = date.getMonth() === now.getMonth();
-
-            return (
-              <div
-                key={key}
-                className={`min-h-[92px] rounded-md border p-1.5 ${
-                  inMonth
-                    ? "border-surface-border bg-surface/70"
-                    : "border-surface-border/50 bg-surface/35 text-zinc-500"
-                }`}
-              >
-                <p className="mb-1 px-1 text-[11px]">{date.getDate()}</p>
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 2).map((event) => (
-                    <p key={event.id} className="truncate rounded border border-gold/40 bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-strong">
-                      {new Date(event.startIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {event.title}
-                    </p>
-                  ))}
-                  {dayEvents.length > 2 ? <p className="px-1 text-[10px] text-zinc-400">+{dayEvents.length - 2} more</p> : null}
-                </div>
-              </div>
-            );
-          })}
+      <SectionCard title="Display options" description="Choose how to view your schedule.">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("calendar")}
+            className={`rounded-md border px-3 py-1.5 text-xs ${
+              viewMode === "calendar"
+                ? "border-gold bg-gold/15 text-gold-strong"
+                : "border-surface-border bg-surface/70 text-zinc-300"
+            }`}
+          >
+            Calendar view
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            className={`rounded-md border px-3 py-1.5 text-xs ${
+              viewMode === "list"
+                ? "border-gold bg-gold/15 text-gold-strong"
+                : "border-surface-border bg-surface/70 text-zinc-300"
+            }`}
+          >
+            List view
+          </button>
         </div>
       </SectionCard>
 
-      <SectionCard title="Upcoming" description="Next activities in chronological order.">
-        <div className="space-y-2 text-sm">
-          {[...mergedEvents]
-            .slice(0, 8)
-            .map((event) => (
+      {viewMode === "calendar" ? (
+        <SectionCard title="Month view" description="Tap any date's tasks from the Tasks or AI chat, and they appear here.">
+          <div className="grid grid-cols-7 gap-2 text-xs text-zinc-300">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((weekday) => (
+              <p key={weekday} className="px-1 py-1.5 text-center font-medium uppercase tracking-wide text-gold">
+                {weekday}
+              </p>
+            ))}
+
+            {grid.map((date) => {
+              const key = dayKey(date);
+              const dayEvents = grouped.get(key) ?? [];
+              const inMonth = date.getMonth() === now.getMonth();
+
+              return (
+                <div
+                  key={key}
+                  className={`min-h-[92px] rounded-md border p-1.5 ${
+                    inMonth
+                      ? "border-surface-border bg-surface/70"
+                      : "border-surface-border/50 bg-surface/35 text-zinc-500"
+                  }`}
+                >
+                  <p className="mb-1 px-1 text-[11px]">{date.getDate()}</p>
+                  <div className="space-y-1">
+                    {dayEvents.slice(0, 2).map((event) => (
+                      <p key={event.id} className="truncate rounded border border-gold/40 bg-gold/15 px-1.5 py-0.5 text-[10px] text-gold-strong">
+                        {new Date(event.startIso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {event.title}
+                      </p>
+                    ))}
+                    {dayEvents.length > 2 ? <p className="px-1 text-[10px] text-zinc-400">+{dayEvents.length - 2} more</p> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      ) : (
+        <SectionCard title="List view" description="Chronological list of all planned activities.">
+          <div className="space-y-2 text-sm">
+            {[...mergedEvents].map((event) => (
               <div key={event.id} className="rounded-md border border-surface-border bg-surface/65 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium">{event.title}</p>
@@ -115,13 +142,14 @@ export default function CalendarPage() {
                 </p>
               </div>
             ))}
-          {!mergedEvents.length ? (
-            <div className="rounded-md border border-surface-border bg-surface/55 p-3 text-zinc-400">
-              No activities yet. Add tasks or ask AI to schedule one.
-            </div>
-          ) : null}
-        </div>
-      </SectionCard>
+            {!mergedEvents.length ? (
+              <div className="rounded-md border border-surface-border bg-surface/55 p-3 text-zinc-400">
+                No activities yet. Add tasks or ask AI to schedule one.
+              </div>
+            ) : null}
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }
