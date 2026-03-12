@@ -1,150 +1,218 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  type Auth,
+  type User,
+} from "firebase/auth";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+import { getFirebaseAuthClient } from "@/lib/firebase/firebase-client";
 
 type AuthUser = {
+  uid: string;
   email: string;
+  displayName: string | null;
+  photoURL: string | null;
+};
+
+type OnPointUserData = {
+  theme: "dark-gold";
+  createdAtIso: string;
+  preferences: {
+    timezone: string;
+  };
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
+  appUserData: OnPointUserData | null;
   isReady: boolean;
-  isGoogleReady: boolean;
+  isCalendarScopeGranted: boolean;
+  googleAccessToken: string | null;
   signInWithGoogle: () => Promise<void>;
+  refreshGoogleAccessToken: () => Promise<void>;
+  updateAppUserData: (patch: Partial<OnPointUserData>) => void;
   signOut: () => void;
 };
+
 const SESSION_KEY = "onpoint_auth_session";
-const GOOGLE_SCRIPT_ID = "google-identity-services-auth";
+const ACCESS_TOKEN_KEY = "onpoint_google_access_token";
 
-type GoogleCredentialResponse = {
-  credential?: string;
-};
-
-type GooglePromptNotification = {
-  isNotDisplayed: () => boolean;
-  isSkippedMoment: () => boolean;
-};
-
-type GoogleIdWindow = Window & {
-  google?: {
-    accounts: {
-      id: {
-        initialize: (options: {
-          client_id: string;
-          callback: (response: GoogleCredentialResponse) => void;
-        }) => void;
-        prompt: (momentListener?: (notification: GooglePromptNotification) => void) => void;
-      };
-    };
-  };
-};
+function appDataKey(uid: string) {
+  return `onpoint_app_user_data_${uid}`;
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  const chunks = token.split(".");
-  if (chunks.length < 2) {
-    return null;
-  }
+function toAuthUser(user: User): AuthUser {
+  return {
+    uid: user.uid,
+    email: user.email ?? "",
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+  };
+}
 
-  try {
-    const base64 = chunks[1].replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = window.atob(base64);
-    return JSON.parse(decoded) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+function defaultAppUserData(): OnPointUserData {
+  return {
+    theme: "dark-gold",
+    createdAtIso: new Date().toISOString(),
+    preferences: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window === "undefined") {
+  const firebaseAuth = useMemo<Auth | null>(() => {
+    try {
+      return getFirebaseAuthClient();
+    } catch {
       return null;
     }
-
-    const rawSession = localStorage.getItem(SESSION_KEY);
-    return rawSession ? { email: rawSession } : null;
-  });
-  const [isReady] = useState(true);
-  const [isGoogleReady, setIsGoogleReady] = useState(false);
-
-  useEffect(() => {
-    const googleWindow = window as GoogleIdWindow;
-    if (googleWindow.google?.accounts.id) {
-      setIsGoogleReady(true);
-      return;
-    }
-
-    const existing = document.getElementById(GOOGLE_SCRIPT_ID);
-    if (existing) {
-      existing.addEventListener("load", () => setIsGoogleReady(true), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = GOOGLE_SCRIPT_ID;
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setIsGoogleReady(true);
-    document.head.appendChild(script);
   }, []);
 
-  async function signInWithGoogle() {
-    if (!googleClientId) {
-      throw new Error("Set NEXT_PUBLIC_GOOGLE_CLIENT_ID to enable Google sign-in.");
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [appUserData, setAppUserData] = useState<OnPointUserData | null>(null);
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(() => !firebaseAuth);
+  const [isCalendarScopeGranted, setIsCalendarScopeGranted] = useState(false);
+
+  useEffect(() => {
+    if (!firebaseAuth) {
+      return;
     }
 
-    const googleWindow = window as GoogleIdWindow;
-    if (!googleWindow.google?.accounts.id) {
-      throw new Error("Google sign-in is still loading. Try again in a moment.");
-    }
+    const unsub = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setAppUserData(null);
+        setGoogleAccessToken(null);
+        setIsCalendarScopeGranted(false);
+        setIsReady(true);
+        return;
+      }
 
-    await new Promise<void>((resolve, reject) => {
-      googleWindow.google?.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: (response) => {
-          try {
-            if (!response.credential) {
-              throw new Error("Google sign-in failed.");
-            }
+      const mappedUser = toAuthUser(firebaseUser);
+      setUser(mappedUser);
 
-            const payload = decodeJwtPayload(response.credential);
-            const email = typeof payload?.email === "string" ? payload.email.toLowerCase() : null;
-
-            if (!email) {
-              throw new Error("Could not read Google account email.");
-            }
-
-            localStorage.setItem(SESSION_KEY, email);
-            setUser({ email });
-            resolve();
-          } catch (caughtError) {
-            reject(caughtError instanceof Error ? caughtError : new Error("Google authentication failed."));
-          }
-        },
-      });
-
-      googleWindow.google?.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          reject(new Error("Google prompt was dismissed or blocked by the browser."));
+      const rawStored = localStorage.getItem(appDataKey(mappedUser.uid));
+      if (rawStored) {
+        try {
+          setAppUserData(JSON.parse(rawStored) as OnPointUserData);
+        } catch {
+          const fallback = defaultAppUserData();
+          localStorage.setItem(appDataKey(mappedUser.uid), JSON.stringify(fallback));
+          setAppUserData(fallback);
         }
-      });
+      } else {
+        const created = defaultAppUserData();
+        localStorage.setItem(appDataKey(mappedUser.uid), JSON.stringify(created));
+        setAppUserData(created);
+      }
+
+      const storedAccessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+      setGoogleAccessToken(storedAccessToken);
+      setIsCalendarScopeGranted(Boolean(storedAccessToken));
+      localStorage.setItem(SESSION_KEY, mappedUser.email);
+      setIsReady(true);
+    });
+
+    return () => unsub();
+  }, [firebaseAuth]);
+
+  async function signInWithGoogle() {
+    if (!firebaseAuth) {
+      throw new Error("Firebase auth is not configured. Add NEXT_PUBLIC_FIREBASE_* variables.");
+    }
+
+    const provider = new GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar");
+    provider.setCustomParameters({ prompt: "consent" });
+
+    const result = await signInWithPopup(firebaseAuth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken ?? null;
+
+    if (!token) {
+      throw new Error("Google sign-in succeeded, but Calendar scope token was not returned.");
+    }
+
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    setGoogleAccessToken(token);
+    setIsCalendarScopeGranted(true);
+  }
+
+  async function refreshGoogleAccessToken() {
+    if (!firebaseAuth) {
+      throw new Error("Firebase auth is not configured.");
+    }
+
+    if (!firebaseAuth.currentUser) {
+      throw new Error("No active user session.");
+    }
+
+    const provider = new GoogleAuthProvider();
+    provider.addScope("https://www.googleapis.com/auth/calendar");
+    provider.setCustomParameters({ prompt: "consent" });
+
+    const result = await signInWithPopup(firebaseAuth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken ?? null;
+
+    if (!token) {
+      throw new Error("Calendar token refresh failed.");
+    }
+
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    setGoogleAccessToken(token);
+    setIsCalendarScopeGranted(true);
+  }
+
+  function updateAppUserData(patch: Partial<OnPointUserData>) {
+    if (!user) {
+      return;
+    }
+
+    setAppUserData((prev) => {
+      const next: OnPointUserData = {
+        ...(prev ?? defaultAppUserData()),
+        ...patch,
+        preferences: {
+          ...(prev?.preferences ?? defaultAppUserData().preferences),
+          ...(patch.preferences ?? {}),
+        },
+      };
+
+      localStorage.setItem(appDataKey(user.uid), JSON.stringify(next));
+      return next;
     });
   }
 
   function signOut() {
-    localStorage.removeItem(SESSION_KEY);
+    if (firebaseAuth) {
+      void firebaseSignOut(firebaseAuth);
+    }
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     setUser(null);
+    setAppUserData(null);
+    setGoogleAccessToken(null);
+    setIsCalendarScopeGranted(false);
   }
 
   const value: AuthContextValue = {
     user,
+    appUserData,
     isReady,
-    isGoogleReady,
+    isCalendarScopeGranted,
+    googleAccessToken,
     signInWithGoogle,
+    refreshGoogleAccessToken,
+    updateAppUserData,
     signOut,
   };
 

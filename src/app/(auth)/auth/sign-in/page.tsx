@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/auth-context";
 
 export default function SignInPage() {
   const router = useRouter();
-  const { user, isReady, isGoogleReady, signInWithGoogle } = useAuth();
+  const { user, isReady, signInWithGoogle, isCalendarScopeGranted } = useAuth();
 
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -41,18 +41,23 @@ export default function SignInPage() {
           Continue securely with your Google account.
         </p>
 
+        <div className="mt-4 rounded-md border border-gold/40 bg-gold/10 p-3 text-xs text-zinc-200">
+          On Point requests Google Calendar permission so the app can read your events and create/update calendar items.
+        </div>
+
         <button
           type="button"
-          disabled={pending || !isGoogleReady}
+          disabled={pending}
           onClick={() => void submit()}
           className="mt-6 w-full rounded-lg border border-gold bg-gold/15 px-4 py-2.5 font-medium text-gold-strong disabled:opacity-60"
         >
-          {pending ? "Please wait..." : !isGoogleReady ? "Loading Google..." : "Continue with Google"}
+          {pending ? "Please wait..." : "Continue with Google"}
         </button>
 
         {status ? <p className="mt-2 text-xs text-red-300">{status}</p> : null}
+        {isCalendarScopeGranted ? <p className="mt-2 text-xs text-emerald-300">Calendar scope granted.</p> : null}
 
-        <p className="mt-3 text-xs text-zinc-400">Google auth requires NEXT_PUBLIC_GOOGLE_CLIENT_ID to be configured.</p>
+        <p className="mt-3 text-xs text-zinc-400">Firebase config variables must be set in environment for auth to work.</p>
 
         <div className="mt-5 flex items-center justify-end text-sm">
           <Link href="/assistant" className="text-gold-strong underline-offset-4 hover:underline">
