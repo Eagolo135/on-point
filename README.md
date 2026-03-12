@@ -11,19 +11,19 @@ On Point is a mobile-friendly productivity web app for realistic schedule orches
 
 ## Current MVP Phase
 
-Phase 1 includes:
+Current MVP includes:
 
 - Core architecture and folder structure
-- Route scaffolding
-- Placeholder screens for dashboard, calendar, tasks, assistant, profile
-- Auth and onboarding placeholders
-- Domain TypeScript models
+- Email signup/login flow
+- Home chat assistant page (ChatGPT-style)
+- Visual month calendar view
+- Tasks page with create/edit and shared planner state
+- AI command handling that updates tasks and calendar
 - Sprint tracking workflow
 
 ## Routes
 
 - /auth/sign-in
-- /onboarding
 - /dashboard
 - /calendar
 - /tasks
@@ -36,15 +36,19 @@ Phase 1 includes:
 src/
 	app/
 		(auth)/auth/sign-in/
-		(onboarding)/onboarding/
 		(app)/
 			dashboard/
 			calendar/
 			tasks/
 			assistant/
 			profile/
+	features/
+		auth/
+		assistant/
+		planner/
 	components/
 		layout/
+		providers/
 		ui/
 	config/
 	lib/mock/
@@ -71,6 +75,6 @@ Open http://localhost:3000.
 
 ## Notes
 
-- Google sign-in is currently an honest placeholder (mock only)
-- Assistant is currently local/mock behavior
-- No backend, DB, or external AI integration in Phase 1
+- Assistant command parsing is local (no external LLM backend yet)
+- Email auth is local MVP auth persisted in browser storage
+- No backend or DB yet

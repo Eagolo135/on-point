@@ -4,9 +4,9 @@ export type NavItem = {
 };
 
 export const APP_NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/assistant" },
   { label: "Dashboard", href: "/dashboard" },
   { label: "Calendar", href: "/calendar" },
   { label: "Tasks", href: "/tasks" },
-  { label: "Assistant", href: "/assistant" },
   { label: "Profile", href: "/profile" },
 ];

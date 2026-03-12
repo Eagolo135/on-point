@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusChip } from "@/components/ui/status-chip";
-import { mockTasks } from "@/lib/mock/mock-data";
+import { usePlanner } from "@/features/planner/planner-context";
 import type { Task, TaskPriority, TaskType } from "@/types/domain";
 
 type TaskForm = {
@@ -34,7 +34,7 @@ const INITIAL_FORM: TaskForm = {
 };
 
 export function TasksClient() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const { tasks, addTask, updateTask, events } = usePlanner();
   const [form, setForm] = useState<TaskForm>(INITIAL_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | TaskType>("all");
@@ -49,39 +49,30 @@ export function TasksClient() {
     setEditingId(null);
   }
 
-  function submitTask() {
+  async function submitTask() {
     if (!form.title.trim()) {
       return;
     }
 
     if (editingId) {
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.id === editingId
-            ? {
-                ...task,
-                title: form.title,
-                type: form.type,
-                priority: form.priority,
-                estimatedMinutes: form.estimatedMinutes,
-              }
-            : task,
-        ),
-      );
+      updateTask(editingId, {
+        title: form.title,
+        type: form.type,
+        priority: form.priority,
+        estimatedMinutes: form.estimatedMinutes,
+      });
+
       resetForm();
       return;
     }
 
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
+    addTask({
       title: form.title,
       type: form.type,
       priority: form.priority,
-      status: "not-started",
       estimatedMinutes: form.estimatedMinutes,
-    };
+    });
 
-    setTasks((prev) => [newTask, ...prev]);
     resetForm();
   }
 
@@ -170,7 +161,7 @@ export function TasksClient() {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={submitTask} className="rounded-md border border-gold bg-gold/15 px-3 py-2 text-sm text-gold-strong">
+          <button onClick={() => void submitTask()} className="rounded-md border border-gold bg-gold/15 px-3 py-2 text-sm text-gold-strong">
             {editingId ? "Save task" : "Add task"}
           </button>
           {editingId ? (
@@ -208,6 +199,26 @@ export function TasksClient() {
               </button>
             </li>
           ))}
+        </ul>
+      </SectionCard>
+
+      <SectionCard
+        title="Calendar activities"
+        description="All scheduled activities currently reflected inside On Point."
+      >
+        <ul className="space-y-2 text-sm">
+          {events.slice(0, 12).map((event) => (
+            <li key={event.id} className="rounded-md border border-surface-border bg-surface/65 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium">{event.title}</p>
+                <StatusChip label={event.source} tone={event.source === "task" ? "gold" : "neutral"} />
+              </div>
+              <p className="mt-1 text-zinc-300">
+                {new Date(event.startIso).toLocaleString()} - {new Date(event.endIso).toLocaleTimeString()}
+              </p>
+            </li>
+          ))}
+          {!events.length ? <li className="text-zinc-400">No activities scheduled yet.</li> : null}
         </ul>
       </SectionCard>
     </div>

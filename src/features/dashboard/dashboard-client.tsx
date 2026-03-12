@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusChip } from "@/components/ui/status-chip";
+import { usePlanner } from "@/features/planner/planner-context";
 import { mockCurrentDay, mockProfile } from "@/lib/mock/mock-data";
 import { rebuildDayPlan } from "@/lib/scheduler/rebuild-day-plan";
 import { getFreeTimeSuggestions } from "@/lib/suggestions/free-time-suggestions";
@@ -39,7 +40,11 @@ export function DashboardClient() {
     lostMinutes: 30,
   });
 
+  const { events } = usePlanner();
+
   const suggestions = useMemo(() => getFreeTimeSuggestions(dayPlan, mockProfile), [dayPlan]);
+  const todayTasksCount = dayPlan.timeline.filter((entry) => entry.type === "task").length;
+  const warningsCount = dayPlan.warnings.length;
 
   function applyOverrun(minutes: number, moveRemaining = false) {
     if (minutes <= 0 && !moveRemaining) {
@@ -79,17 +84,34 @@ export function DashboardClient() {
   return (
     <div className="space-y-4 md:space-y-5">
       <PageHeader
-        title="Today"
-        subtitle="Your realistic plan, live-adjusted as the day changes."
+        title="Today Command Center"
+        subtitle="Calendar, tasks, and schedule pressure in one rich view."
         action={
           <button
             onClick={() => setSummary({ moved: [], shortened: [], sacrificed: [], warnings: [], notes: ["Manual rebuild requested. No conflicting events found."] })}
-            className="rounded-lg border border-gold bg-gold/15 px-3 py-2 text-xs font-medium text-gold-strong"
+            className="rounded-lg border border-gold bg-gold/15 px-3 py-2 text-xs font-medium text-gold-strong shadow-[0_0_24px_rgba(200,162,77,0.15)]"
           >
             Rebuild day
           </button>
         }
       />
+
+      <SectionCard title="Overview" description="High-level status for execution quality.">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-gold/40 bg-gradient-to-b from-gold/15 to-surface p-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-gold">Tasks Today</p>
+            <p className="mt-2 text-2xl font-semibold">{todayTasksCount}</p>
+          </div>
+          <div className="rounded-lg border border-surface-border bg-surface/75 p-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-gold">Sleep Goal</p>
+            <p className="mt-2 text-2xl font-semibold">{mockProfile.sleep.goalHours}h</p>
+          </div>
+          <div className="rounded-lg border border-surface-border bg-surface/75 p-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-gold">Warnings</p>
+            <p className="mt-2 text-2xl font-semibold">{warningsCount}</p>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Now and next" description="Current and upcoming focus blocks.">
         <div className="grid gap-3 text-sm md:grid-cols-2">
@@ -151,6 +173,26 @@ export function DashboardClient() {
               <p className="mt-1 text-zinc-300">{entry.type}</p>
             </li>
           ))}
+        </ul>
+      </SectionCard>
+
+      <SectionCard
+        title="Calendar sync"
+        description="Activities currently reflected in On Point."
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <StatusChip label="Live local planner" tone="gold" />
+        </div>
+        <ul className="space-y-2 text-sm">
+          {events.slice(0, 8).map((event) => (
+            <li key={event.id} className="rounded-md border border-surface-border bg-surface/65 p-3">
+              <p className="font-medium">{event.title}</p>
+              <p className="mt-1 text-zinc-300">
+                {new Date(event.startIso).toLocaleString()} - {new Date(event.endIso).toLocaleTimeString()}
+              </p>
+            </li>
+          ))}
+          {!events.length ? <li className="text-zinc-400">No activities loaded yet.</li> : null}
         </ul>
       </SectionCard>
 
