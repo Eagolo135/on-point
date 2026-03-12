@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { usePlanner } from "@/features/planner/planner-context";
+import { looksLikeResearchPrompt, runAgenticResearch, type ResearchReport } from "@/features/assistant/research-tool";
 
 type ChatMessage = {
   id: string;
@@ -23,6 +24,7 @@ export function AssistantChatClient() {
   const [messages, setMessages] = useState<ChatMessage[]>(STARTER);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [researchReport, setResearchReport] = useState<ResearchReport | null>(null);
 
   async function submit() {
     const text = input.trim();
@@ -41,6 +43,19 @@ export function AssistantChatClient() {
     setInput("");
 
     setIsSending(true);
+    if (looksLikeResearchPrompt(text)) {
+      const report = await runAgenticResearch(text);
+      setResearchReport(report);
+      const assistantMessage: ChatMessage = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        text: `${report.summary} I added the key findings, sources, and a relevance graph below.`,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setIsSending(false);
+      return;
+    }
+
     const response = runPointChat(text);
     const assistantMessage: ChatMessage = {
       id: `a-${Date.now()}`,
@@ -48,6 +63,7 @@ export function AssistantChatClient() {
       text: response.message,
     };
     setMessages((prev) => [...prev, assistantMessage]);
+    setResearchReport(null);
     setIsSending(false);
   }
 
@@ -100,6 +116,57 @@ export function AssistantChatClient() {
           <div className="flex justify-start">
             <div className="max-w-[88%] rounded-2xl border border-surface-border bg-background px-4 py-3 text-sm text-zinc-400 md:max-w-[70%]">
               Thinking...
+            </div>
+          </div>
+        ) : null}
+
+        {researchReport ? (
+          <div className="rounded-xl border border-surface-border bg-background p-3 text-sm">
+            <p className="text-xs uppercase tracking-[0.18em] text-gold">Research Mode</p>
+            <h2 className="mt-1 text-base font-semibold">{researchReport.query}</h2>
+            <p className="mt-1 text-zinc-300">{researchReport.summary}</p>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="rounded-md border border-surface-border bg-surface/65 p-3">
+                <p className="text-xs uppercase tracking-wide text-gold">Key findings</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-zinc-200">
+                  {researchReport.keyFindings.map((finding) => (
+                    <li key={finding}>{finding}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-md border border-surface-border bg-surface/65 p-3">
+                <p className="text-xs uppercase tracking-wide text-gold">Relevance graph</p>
+                <div className="mt-2 space-y-2">
+                  {researchReport.graph.map((point) => (
+                    <div key={point.label}>
+                      <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-300">
+                        <span>{point.label}</span>
+                        <span>{point.score}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-surface-border">
+                        <div className="h-2 rounded-full bg-gold/70" style={{ width: `${point.score}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-md border border-surface-border bg-surface/65 p-3">
+              <p className="text-xs uppercase tracking-wide text-gold">Sources</p>
+              <ul className="mt-2 space-y-2">
+                {researchReport.sources.map((source) => (
+                  <li key={source.url} className="rounded border border-surface-border bg-background p-2">
+                    <a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-gold-strong hover:underline">
+                      {source.title}
+                    </a>
+                    <p className="mt-1 text-xs text-zinc-300">{source.snippet}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-zinc-400">Tools used: {researchReport.usedTools.join(" · ")}</p>
             </div>
           </div>
         ) : null}
