@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 type AuthUser = {
   email: string;
@@ -9,39 +9,56 @@ type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   isReady: boolean;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
+  isGoogleReady: boolean;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => void;
 };
+const SESSION_KEY = "onpoint_auth_session";
+const GOOGLE_SCRIPT_ID = "google-identity-services-auth";
 
-type StoredUser = {
-  email: string;
-  password: string;
+type GoogleCredentialResponse = {
+  credential?: string;
 };
 
-const USERS_KEY = "onpoint_auth_users";
-const SESSION_KEY = "onpoint_auth_session";
+type GooglePromptNotification = {
+  isNotDisplayed: () => boolean;
+  isSkippedMoment: () => boolean;
+};
+
+type GoogleIdWindow = Window & {
+  google?: {
+    accounts: {
+      id: {
+        initialize: (options: {
+          client_id: string;
+          callback: (response: GoogleCredentialResponse) => void;
+        }) => void;
+        prompt: (momentListener?: (notification: GooglePromptNotification) => void) => void;
+      };
+    };
+  };
+};
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readUsers(): StoredUser[] {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) {
-    return [];
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const chunks = token.split(".");
+  if (chunks.length < 2) {
+    return null;
   }
 
   try {
-    return JSON.parse(raw) as StoredUser[];
+    const base64 = chunks[1].replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = window.atob(base64);
+    return JSON.parse(decoded) as Record<string, unknown>;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function writeUsers(users: StoredUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
   const [user, setUser] = useState<AuthUser | null>(() => {
     if (typeof window === "undefined") {
       return null;
@@ -51,35 +68,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return rawSession ? { email: rawSession } : null;
   });
   const [isReady] = useState(true);
+  const [isGoogleReady, setIsGoogleReady] = useState(false);
 
-  async function signUpWithEmail(email: string, password: string) {
-    const normalized = email.trim().toLowerCase();
-    if (!normalized || password.length < 6) {
-      throw new Error("Use a valid email and a password with at least 6 characters.");
+  useEffect(() => {
+    const googleWindow = window as GoogleIdWindow;
+    if (googleWindow.google?.accounts.id) {
+      setIsGoogleReady(true);
+      return;
     }
 
-    const users = readUsers();
-    if (users.some((candidate) => candidate.email === normalized)) {
-      throw new Error("Email already exists. Please log in.");
+    const existing = document.getElementById(GOOGLE_SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener("load", () => setIsGoogleReady(true), { once: true });
+      return;
     }
 
-    const updated = [...users, { email: normalized, password }];
-    writeUsers(updated);
-    localStorage.setItem(SESSION_KEY, normalized);
-    setUser({ email: normalized });
-  }
+    const script = document.createElement("script");
+    script.id = GOOGLE_SCRIPT_ID;
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setIsGoogleReady(true);
+    document.head.appendChild(script);
+  }, []);
 
-  async function signInWithEmail(email: string, password: string) {
-    const normalized = email.trim().toLowerCase();
-    const users = readUsers();
-
-    const found = users.find((candidate) => candidate.email === normalized);
-    if (!found || found.password !== password) {
-      throw new Error("Invalid email or password.");
+  async function signInWithGoogle() {
+    if (!googleClientId) {
+      throw new Error("Set NEXT_PUBLIC_GOOGLE_CLIENT_ID to enable Google sign-in.");
     }
 
-    localStorage.setItem(SESSION_KEY, normalized);
-    setUser({ email: normalized });
+    const googleWindow = window as GoogleIdWindow;
+    if (!googleWindow.google?.accounts.id) {
+      throw new Error("Google sign-in is still loading. Try again in a moment.");
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      googleWindow.google?.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (response) => {
+          try {
+            if (!response.credential) {
+              throw new Error("Google sign-in failed.");
+            }
+
+            const payload = decodeJwtPayload(response.credential);
+            const email = typeof payload?.email === "string" ? payload.email.toLowerCase() : null;
+
+            if (!email) {
+              throw new Error("Could not read Google account email.");
+            }
+
+            localStorage.setItem(SESSION_KEY, email);
+            setUser({ email });
+            resolve();
+          } catch (caughtError) {
+            reject(caughtError instanceof Error ? caughtError : new Error("Google authentication failed."));
+          }
+        },
+      });
+
+      googleWindow.google?.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          reject(new Error("Google prompt was dismissed or blocked by the browser."));
+        }
+      });
+    });
   }
 
   function signOut() {
@@ -87,16 +140,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      isReady,
-      signUpWithEmail,
-      signInWithEmail,
-      signOut,
-    }),
-    [user, isReady],
-  );
+  const value: AuthContextValue = {
+    user,
+    isReady,
+    isGoogleReady,
+    signInWithGoogle,
+    signOut,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
