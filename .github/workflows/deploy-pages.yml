@@ -33,16 +33,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate Google auth env
-        run: |
-          test -n "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" || (echo "Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID" && exit 1)
-        env:
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-
       - name: Build static export
         run: npm run build
         env:
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
