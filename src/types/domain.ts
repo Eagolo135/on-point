@@ -38,6 +38,8 @@ export type BlockerType =
   | "illness-burnout"
   | "other";
 
+export type OverrunAction = "done" | "add-default" | "add-custom" | "move-remaining";
+
 export type SacrificePreference =
   | "protect-class-work"
   | "protect-min-sleep"
@@ -103,6 +105,31 @@ export type DayPlan = {
   nextTask: string;
   warnings: string[];
   timeline: TimelineEntry[];
+};
+
+export type BlockerInput = {
+  type: BlockerType;
+  title: string;
+  lostMinutes: number;
+};
+
+export type ScheduleChangeSummary = {
+  moved: string[];
+  shortened: string[];
+  sacrificed: string[];
+  warnings: string[];
+  notes: string[];
+};
+
+export type ScheduleRebuildResult = {
+  plan: DayPlan;
+  summary: ScheduleChangeSummary;
+};
+
+export type FreeTimeSuggestion = {
+  id: string;
+  label: string;
+  reason: string;
 };
 
 export type CalendarDaySummary = {

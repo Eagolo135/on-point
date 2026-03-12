@@ -44,7 +44,7 @@ Establish a production-minded MVP foundation for On Point with modular architect
 - [x] Add TypeScript domain models
 - [x] Add local mock data
 - [x] Set up sprint folders and active sprint file
-- [ ] Run lint/build sanity checks
+- [x] Run lint/build sanity checks
 
 ## Testing
 - Run npm run lint
@@ -56,7 +56,7 @@ Establish a production-minded MVP foundation for On Point with modular architect
 None currently.
 
 ## Status
-In Progress
+Completed
 
 ## Definition of Done
 - All Phase 1 route placeholders are present and navigable

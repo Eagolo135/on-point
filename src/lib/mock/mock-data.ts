@@ -71,6 +71,8 @@ export const mockCurrentDay: DayPlan = {
     { id: "t4", label: "Class: Math", type: "class", start: "08:00", end: "09:20" },
     { id: "t5", label: "Chemistry lab prep", type: "task", start: "09:40", end: "10:40" },
     { id: "t6", label: "Class: Systems Engineering", type: "class", start: "11:00", end: "12:20" },
+    { id: "t7", label: "Gym session", type: "task", start: "17:30", end: "19:00", taskId: "task-2" },
+    { id: "t8", label: "Journal (optional)", type: "task", start: "22:30", end: "22:50", taskId: "task-3" },
   ],
 };
 
