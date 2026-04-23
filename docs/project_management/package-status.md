@@ -24,3 +24,13 @@
 - Sprint 004 (golden-path hardening): in progress
 - Sprint 005 (planner-context decomposition): planned
 - Sprint 006 (artifact/deployment strategy): planned
+
+## Sprint Lane State
+- backlog: `sprints/backlog` (sprint-005, sprint-006)
+- current: `sprints/current` (sprint-004)
+- completed: `sprints/completed` (sprint-001, sprint-002, sprint-003)
+
+## Change Intake Integration
+- Intake register: `docs/project_management/change_intake/intake-register.md`
+- Intake template: `docs/project_management/change_intake/intake-template.md`
+- Rule: all new work must begin in intake before sprint assignment.

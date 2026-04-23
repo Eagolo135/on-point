@@ -3,6 +3,12 @@
 ## Source
 Based on repo-wide Uncle Bob review findings: dead API surface, auth state noise, planner context size, artifact strategy ambiguity, and golden-path coverage gaps.
 
+## Operating Mode
+- Work enters through change intake first.
+- Sprint files live in lane folders: `sprints/backlog`, `sprints/current`, `sprints/completed`.
+- Before each package in a sprint, re-read `PROJECT_SPEC.md`, then check drift with surrounding sprint specs.
+- Specs are updated first; implementation starts only after spec QA.
+
 ## Sprint Mapping
 
 ### Sprint 003 - Clean Architecture Trim
@@ -26,6 +32,8 @@ Evidence:
 ### Sprint 004 - Golden Path Hardening
 Status: in progress
 
+Lane: current
+
 Findings addressed:
 1. Golden-path matrix added to avoid requirement drift.
 2. QA sprint report scaffold added.
@@ -37,6 +45,8 @@ Evidence:
 ### Sprint 005 - Planner Context Decomposition
 Status: planned
 
+Lane: backlog
+
 Findings to address:
 1. Break planner god-object into smaller use-case modules.
 2. Isolate parsing/intents from scheduling mutations.
@@ -44,6 +54,8 @@ Findings to address:
 
 ### Sprint 006 - Artifact and Deployment Strategy
 Status: planned
+
+Lane: backlog
 
 Findings to address:
 1. Decide source-branch vs exported-artifact strategy.

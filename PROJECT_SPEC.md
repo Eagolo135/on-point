@@ -31,6 +31,13 @@ For every package of work:
 6. Decide whether more QA is worthwhile or has diminishing returns
 7. Update this master spec if requirements, architecture, or status changed
 
+Formal sprint loop requirements:
+- All new work must enter via change intake (feature, bug, hotfix, refactor, or spike).
+- Intake-approved items are prioritized into `sprints/backlog` and moved to `sprints/current` only when actively executed.
+- Completed sprint files are moved to `sprints/completed` with QA evidence and diminishing-returns decision logged.
+- Before each package implementation, re-read this file and check for drift between previous/current/next sprint specs.
+- If drift exists, update affected specs and sprint docs before coding.
+
 ---
 
 ## 4. Tech Stack
@@ -171,6 +178,10 @@ Run 2-3 QA passes:
 - /tests/e2e -> Playwright end-to-end tests
 - /tests/golden-path -> essential user journey tests
 - /docs/project_management -> planning and source-of-truth docs
+- /docs/project_management/change_intake -> intake queue, triage, and decision records
+- /sprints/backlog -> approved but not yet started sprint plans
+- /sprints/current -> exactly one active sprint (unless explicitly parallelized)
+- /sprints/completed -> closed sprint records with QA results
 
 ---
 
@@ -189,7 +200,7 @@ Run 2-3 QA passes:
 - [x] Package 1A: auth session domain + role model foundation
 
 ### In Progress
-- [ ]
+- [x] Sprint 004: golden-path hardening
 
 ### Not Started
 - [ ] Package 1B: anonymous carryover contract design
@@ -203,6 +214,11 @@ Run 2-3 QA passes:
 - [ ] Docker production validation
 - [ ] Full E2E + Lighthouse QA
 - [ ] Refactor pass
+
+Sprint lane state:
+- backlog: sprint-005, sprint-006
+- current: sprint-004
+- completed: sprint-001, sprint-002, sprint-003
 
 ---
 
@@ -226,3 +242,9 @@ After each package of work, update:
 - changes to scope
 
 This document must remain detailed enough that a new agent session can resume accurately without losing essential project intent.
+
+Additionally, at each sprint transition (backlog -> current -> completed), update:
+- change intake status for all linked items
+- sprint plan status and package mapping
+- QA report references and outcomes
+- explicit diminishing-returns decision for additional QA
