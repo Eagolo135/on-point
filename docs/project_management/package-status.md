@@ -34,3 +34,8 @@
 - Intake register: `docs/project_management/change_intake/intake-register.md`
 - Intake template: `docs/project_management/change_intake/intake-template.md`
 - Rule: all new work must begin in intake before sprint assignment.
+
+## Phase Planning Integration
+- Phase plan: `docs/project_management/phases/phase-plan.md`
+- Sprint loop SOP: `docs/project_management/sprint-loop.md`
+- QA cadence: `qa/qa-cadence.md`

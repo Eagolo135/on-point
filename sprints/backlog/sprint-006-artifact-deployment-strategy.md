@@ -3,6 +3,9 @@
 ## Intake Links
 - CHG-003
 
+## Phase
+- Phase 4 - Production Hardening and Validation
+
 ## Goal
 Define and enforce a clear strategy for source code vs generated deployment artifacts to reduce drift and noisy QA signals.
 
@@ -13,6 +16,12 @@ Define and enforce a clear strategy for source code vs generated deployment arti
 
 ## Dependencies
 - Decision with repository owner on publishing approach.
+
+## Mandatory Start Gate
+Before moving to `sprints/current`:
+1. Re-read master spec.
+2. Run drift checks against current sprint, latest completed sprint, and next planned sprint.
+3. Update package specs before implementation.
 
 ## QA Plan
 1. Validate local dev workflow remains fast.

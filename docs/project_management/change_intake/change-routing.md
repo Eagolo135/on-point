@@ -17,6 +17,11 @@ All new work must start as an intake entry before sprint assignment.
 5. Move sprint to `sprints/current` when execution starts.
 6. Keep intake status synchronized: `in-sprint` -> `done`.
 
+## Sprint Interruption Policy
+1. Hotfixes can interrupt the active sprint only if severity is critical.
+2. Critical hotfix interruption requires explicit record in intake notes and sprint notes.
+3. Non-critical hotfixes are queued through backlog like other intake types.
+
 ## SLA Guidance
 - hotfix: same day triage
 - bug: next triage cycle
@@ -26,3 +31,4 @@ All new work must start as an intake entry before sprint assignment.
 - Intake ID exists.
 - Sprint assignment exists.
 - Package spec updated and QA-reviewed.
+- For hotfix: critical severity confirmed and interruption decision documented.

@@ -3,6 +3,9 @@
 ## Intake Links
 - CHG-002
 
+## Phase
+- Phase 2 - Access Control and Identity Behavior
+
 ## Goal
 Decompose planner context into smaller modules with explicit boundaries while preserving behavior.
 
@@ -15,6 +18,12 @@ Decompose planner context into smaller modules with explicit boundaries while pr
 ## Dependencies
 - Current sprint outcomes.
 - Package specs for planner-related changes.
+
+## Mandatory Start Gate
+Before moving to `sprints/current`:
+1. Re-read master spec.
+2. Run drift checks against current sprint, latest completed sprint, and next planned sprint.
+3. Update package specs before implementation.
 
 ## QA Plan
 1. Functional regression checks on scheduling commands.

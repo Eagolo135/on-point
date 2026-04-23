@@ -16,9 +16,16 @@ Establish a formal, repeatable sprint loop that prevents drift and enforces spec
 ## Mandatory Pre-Work Gate (Before Every Package)
 1. Re-read `PROJECT_SPEC.md`.
 2. Read current sprint spec.
-3. Read previous and next sprint docs to check boundary drift.
-4. If drift exists, update specs/sprint docs first.
-5. Only then start scaffold/implementation.
+3. Read latest completed sprint doc and next planned sprint doc.
+4. Check drift across: master spec, current sprint, latest completed sprint, next planned sprint.
+5. Check current sprint phase alignment with `docs/project_management/phases/phase-plan.md`.
+6. If drift exists, update specs/sprint docs first.
+7. Only then start scaffold/implementation.
+
+## Active Sprint Rule
+1. Keep exactly one sprint in `sprints/current`.
+2. Move finished sprints to `sprints/completed` immediately after closure criteria are met.
+3. Keep approved future work in `sprints/backlog`.
 
 ## Mandatory Per-Package Gate
 1. Phase 0: understand/restate, assumptions, risks, dependencies, package-size check.
@@ -28,6 +35,10 @@ Establish a formal, repeatable sprint loop that prevents drift and enforces spec
 5. Phase 4: implementation.
 6. Phase 5: QA passes (functional, golden path/E2E, architecture).
 7. Phase 6: diminishing-returns decision.
+
+QA cadence requirement:
+- Run at least one mid-package QA checkpoint, not only final QA.
+- Use `qa/qa-cadence.md` and `qa/qa-diminishing-returns-template.md` to record evidence.
 
 ## Truth Files To Update Continuously
 - `PROJECT_SPEC.md`

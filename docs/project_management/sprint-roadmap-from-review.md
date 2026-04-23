@@ -8,6 +8,8 @@ Based on repo-wide Uncle Bob review findings: dead API surface, auth state noise
 - Sprint files live in lane folders: `sprints/backlog`, `sprints/current`, `sprints/completed`.
 - Before each package in a sprint, re-read `PROJECT_SPEC.md`, then check drift with surrounding sprint specs.
 - Specs are updated first; implementation starts only after spec QA.
+- Phase alignment is governed by `docs/project_management/phases/phase-plan.md`.
+- QA cadence is governed by `qa/qa-cadence.md`.
 
 ## Sprint Mapping
 

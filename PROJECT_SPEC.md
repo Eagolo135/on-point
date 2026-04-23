@@ -35,8 +35,13 @@ Formal sprint loop requirements:
 - All new work must enter via change intake (feature, bug, hotfix, refactor, or spike).
 - Intake-approved items are prioritized into `sprints/backlog` and moved to `sprints/current` only when actively executed.
 - Completed sprint files are moved to `sprints/completed` with QA evidence and diminishing-returns decision logged.
-- Before each package implementation, re-read this file and check for drift between previous/current/next sprint specs.
+- Before each package implementation, re-read this file and check for drift between master spec, current sprint, latest completed sprint, and next planned sprint.
 - If drift exists, update affected specs and sprint docs before coding.
+
+Change-control and sprint interruption rules:
+- All changes must start with intake and triage before sprint assignment.
+- Hotfixes may interrupt the active sprint only if severity is critical.
+- Non-critical hotfixes, bugs, features, refactors, and spikes must be queued through backlog.
 
 ---
 
@@ -132,6 +137,16 @@ Recommended package order:
 
 ---
 
+## 9A. Development Phases
+Phase definitions live in `docs/project_management/phases/phase-plan.md` and must be maintained as living planning truth.
+
+Phase expectations:
+- Every sprint must declare its phase.
+- Phase alignment must be checked during drift review before coding.
+- Phase changes require updates to this spec and package/sprint trackers.
+
+---
+
 ## 10. QA Standards
 
 ### Spec QA
@@ -179,6 +194,7 @@ Run 2-3 QA passes:
 - /tests/golden-path -> essential user journey tests
 - /docs/project_management -> planning and source-of-truth docs
 - /docs/project_management/change_intake -> intake queue, triage, and decision records
+- /docs/project_management/phases -> explicit phase planning and phase-to-sprint mapping
 - /sprints/backlog -> approved but not yet started sprint plans
 - /sprints/current -> exactly one active sprint (unless explicitly parallelized)
 - /sprints/completed -> closed sprint records with QA results
@@ -248,3 +264,9 @@ Additionally, at each sprint transition (backlog -> current -> completed), updat
 - sprint plan status and package mapping
 - QA report references and outcomes
 - explicit diminishing-returns decision for additional QA
+
+Additionally, before implementation starts for each package, record drift check coverage for:
+- master spec
+- current sprint
+- latest completed sprint
+- next planned sprint

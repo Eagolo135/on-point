@@ -19,6 +19,9 @@ Out of scope:
 ## Risk Level
 low | medium | high
 
+## Severity (required for bug/hotfix)
+low | medium | high | critical
+
 ## Priority
 low | medium | high
 
@@ -27,6 +30,15 @@ low | medium | high
 ## Acceptance Criteria
 
 ## Recommended Sprint Mapping
+
+## Recommended Phase Mapping
+
+## Drift Check Requirement
+Confirm this intake item has been checked against:
+- master spec
+- current sprint
+- latest completed sprint
+- next planned sprint
 
 ## Triage Decision
 approved | rejected | deferred
