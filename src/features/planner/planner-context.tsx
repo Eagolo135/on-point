@@ -80,7 +80,6 @@ type PlannerContextValue = {
   confirmPendingProposal: () => string;
   cancelPendingProposal: () => void;
   runPointChat: (prompt: string) => PointChatResult;
-  runAssistantCommand: (prompt: string) => string;
 };
 
 const PlannerContext = createContext<PlannerContextValue | null>(null);
@@ -495,10 +494,6 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
 
     setEvents((prev) => [event, ...prev]);
     return event;
-  }
-
-  function runAssistantCommand(prompt: string): string {
-    return runPointChat(prompt).message;
   }
 
   function applyProposalOperations(operations: PlannerProposalOperation[]) {
@@ -972,7 +967,6 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
     confirmPendingProposal,
     cancelPendingProposal,
     runPointChat,
-    runAssistantCommand,
   };
 
   return <PlannerContext.Provider value={value}>{children}</PlannerContext.Provider>;

@@ -1,6 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
+
+import type { AuthSession, AuthUserIdentity } from "@/features/auth/model/session";
+import type { Role } from "@/features/auth/model/roles";
+import { rolePolicy } from "@/features/auth/policies/role-policy";
+import { clearAuthSession, persistAuthSession, readAuthSession, transitionToAuthenticated } from "@/features/auth/services/auth-session-service";
 
 type AuthUser = {
   uid: string;
@@ -18,15 +23,14 @@ type OnPointUserData = {
 };
 
 type AuthContextValue = {
+  session: AuthSession | null;
+  role: Role;
   user: AuthUser | null;
   appUserData: OnPointUserData | null;
-  isReady: boolean;
   signIn: (input: { email: string; displayName?: string }) => void;
   updateAppUserData: (patch: Partial<OnPointUserData>) => void;
   signOut: () => void;
 };
-
-const SESSION_KEY = "onpoint_auth_session";
 
 function appDataKey(uid: string) {
   return `onpoint_app_user_data_${uid}`;
@@ -47,74 +51,84 @@ function defaultAppUserData(): OnPointUserData {
 function readInitialAuthState() {
   if (typeof window === "undefined") {
     return {
+      session: null as AuthSession | null,
       user: null as AuthUser | null,
       appUserData: null as OnPointUserData | null,
     };
   }
 
+  const session = readAuthSession();
+
   let user: AuthUser | null = null;
   let appUserData: OnPointUserData | null = null;
 
-  const storedUserRaw = localStorage.getItem(SESSION_KEY);
-  if (storedUserRaw) {
-    try {
-      const parsed = JSON.parse(storedUserRaw) as AuthUser;
-      user = parsed;
+  if (session.role !== "anonymous") {
+    user = session.user;
 
-      const rawStored = localStorage.getItem(appDataKey(parsed.uid));
-      if (rawStored) {
+    const rawStored = localStorage.getItem(appDataKey(session.user.uid));
+    if (rawStored) {
+      try {
         appUserData = JSON.parse(rawStored) as OnPointUserData;
-      } else {
+      } catch {
         const created = defaultAppUserData();
-        localStorage.setItem(appDataKey(parsed.uid), JSON.stringify(created));
+        localStorage.setItem(appDataKey(session.user.uid), JSON.stringify(created));
         appUserData = created;
       }
-    } catch {
-      localStorage.removeItem(SESSION_KEY);
+    } else {
+      const created = defaultAppUserData();
+      localStorage.setItem(appDataKey(session.user.uid), JSON.stringify(created));
+      appUserData = created;
     }
   }
 
   return {
+    session,
     user,
     appUserData,
+  };
+}
+
+function toLocalUser(input: { email: string; displayName?: string }): AuthUserIdentity {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  return {
+    uid: `local-${normalizedEmail.replace(/[^a-z0-9]/g, "-")}`,
+    email: normalizedEmail,
+    displayName: input.displayName?.trim() || normalizedEmail.split("@")[0] || "User",
+    photoURL: null,
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initial] = useState(readInitialAuthState);
 
+  const [session, setSession] = useState<AuthSession | null>(initial.session);
   const [user, setUser] = useState<AuthUser | null>(initial.user);
   const [appUserData, setAppUserData] = useState<OnPointUserData | null>(initial.appUserData);
-  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
-
-  function buildLocalUser(input: { email: string; displayName?: string }): AuthUser {
-    const normalizedEmail = input.email.trim().toLowerCase();
-    return {
-      uid: `local-${normalizedEmail.replace(/[^a-z0-9]/g, "-")}`,
-      email: normalizedEmail,
-      displayName: input.displayName?.trim() || normalizedEmail.split("@")[0] || "User",
-      photoURL: null,
-    };
-  }
+  const role = rolePolicy.resolveRole(session);
 
   function signIn(input: { email: string; displayName?: string }) {
-    const profile = buildLocalUser(input);
+    const identity = toLocalUser(input);
+    const nextSession = transitionToAuthenticated({ user: identity, role: "user" });
+    persistAuthSession(nextSession);
 
-    localStorage.setItem(SESSION_KEY, JSON.stringify(profile));
-    const rawStored = localStorage.getItem(appDataKey(profile.uid));
+    const rawStored = localStorage.getItem(appDataKey(identity.uid));
     if (rawStored) {
-      setAppUserData(JSON.parse(rawStored) as OnPointUserData);
+      try {
+        setAppUserData(JSON.parse(rawStored) as OnPointUserData);
+      } catch {
+        const created = defaultAppUserData();
+        localStorage.setItem(appDataKey(identity.uid), JSON.stringify(created));
+        setAppUserData(created);
+      }
     } else {
       const created = defaultAppUserData();
-      localStorage.setItem(appDataKey(profile.uid), JSON.stringify(created));
+      localStorage.setItem(appDataKey(identity.uid), JSON.stringify(created));
       setAppUserData(created);
     }
 
-    setUser(profile);
+    setSession(nextSession);
+    setUser(identity);
   }
 
   function updateAppUserData(patch: Partial<OnPointUserData>) {
@@ -138,15 +152,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function signOut() {
-    localStorage.removeItem(SESSION_KEY);
+    clearAuthSession();
+    const anonymous = readAuthSession();
+    setSession(anonymous);
     setUser(null);
     setAppUserData(null);
   }
 
   const value: AuthContextValue = {
+    session,
+    role,
     user,
     appUserData,
-    isReady,
     signIn,
     updateAppUserData,
     signOut,

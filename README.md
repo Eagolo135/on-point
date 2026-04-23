@@ -73,12 +73,7 @@ npm run dev
 
 Open http://localhost:3000.
 
-For ChatGPT-powered assistant responses, add this to `.env.local`:
-
-```bash
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4o-mini
-```
+Current MVP assistant behavior runs with local planner logic and public research APIs. No OpenAI env vars are required in the current package set.
 
 ## Notes
 

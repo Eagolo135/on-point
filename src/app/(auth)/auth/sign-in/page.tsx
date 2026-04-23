@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/auth-context";
 
 export default function SignInPage() {
   const router = useRouter();
-  const { user, isReady, signIn } = useAuth();
+  const { user, signIn } = useAuth();
 
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -16,10 +16,10 @@ export default function SignInPage() {
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
-    if (isReady && user) {
+    if (user) {
       router.replace("/assistant");
     }
-  }, [isReady, user, router]);
+  }, [user, router]);
 
   async function submit() {
     if (!email.trim()) {

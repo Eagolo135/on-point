@@ -16,15 +16,15 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
-  const { user, isReady, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
-    if (isReady && !user) {
+    if (!user) {
       router.replace("/auth/sign-in");
     }
-  }, [isReady, user, router]);
+  }, [user, router]);
 
-  if (!isReady || !user) {
+  if (!user) {
     return (
       <div className="onpoint-shell flex min-h-screen items-center justify-center px-4 text-sm text-zinc-300">
         Loading secure workspace...
